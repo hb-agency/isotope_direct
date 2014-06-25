@@ -1,0 +1,98 @@
+
+<!-- indexer::stop -->
+<div class="<?php echo $this->class; ?> block"<?php echo $this->cssID; ?><?php if ($this->style): ?> style="<?php echo $this->style; ?>"<?php endif; ?>>
+<?php if ($this->headline): ?>
+
+<<?php echo $this->hl; ?>><?php echo $this->headline; ?></<?php echo $this->hl; ?>>
+<?php endif; ?>
+
+<form action="<?php echo $this->actionFilter; ?>" id="<?php echo $this->formId; ?>" method="post">
+<div class="formbody">
+<input type="hidden" name="FORM_SUBMIT" value="<?php echo $this->formId; ?>">
+<input type="hidden" name="REQUEST_TOKEN" value="{{request_token}}">
+
+<?php if ($this->hasSearch): ?>
+<div class="filtergroup keywords search">
+<h4><?php echo $this->pkeywordsLabel; ?></h4>
+<div class="text_container">
+<input type="text" name="keywords" id="ctrl_keywords_<?php echo $this->id; ?>" class="text" value="<?php echo ($this->keywords ? $this->keywords : $this->defaultSearchText); ?>" onblur="if (this.value=='') { this.value='<?php echo $this->defaultSearchText; ?>'; }" onfocus="if (this.value=='<?php echo $this->defaultSearchText; ?>') { this.value=''; this.select(); }">
+</div>
+</div>
+<?php endif; ?>
+
+<?php if ($this->hasAutocomplete):
+$GLOBALS['TL_CSS'][] = \Haste\Util\Debug::uncompressedFile('system/modules/isotope/assets/plugins/autocompleter/Autocompleter.min.css');
+?>
+<script src="<?php echo \Haste\Util\Debug::uncompressedFile('system/modules/isotope/assets/plugins/autocompleter/Autocompleter.min.js'); ?>"></script>
+<script>
+window.addEvent('domready', function() {
+    var requested = false;
+    var searchField = document.id('ctrl_keywords_<?php echo $this->id; ?>').addEvent('keyup', function(e) {
+        if (requested)
+            return false;
+
+        requested = true;
+
+        new Request.JSON({
+            'url': '<?php echo \Environment::get('request'); ?>',
+            'method': 'get',
+            'data': {
+                'iso_autocomplete': '<?php echo $this->id; ?>',
+            },
+            onComplete: function(json) {
+                new Autocompleter.Local(searchField, json, {
+                    'minLength': 1,
+                    'autoSubmit': true,
+                    'selectMode': 'pick',
+                    'filterSubset': true,
+                    'onSelect': function(el)
+                    {
+                        el.getParent('form').submit();
+                    }
+                }).query();
+            }
+        }).send();
+    });
+});
+</script>
+<?php endif; ?>
+
+<?php if($this->hasSorting): ?>
+<div class="filtergroup productsorting_filter">
+<h4><?php echo $this->psortLabel; ?></h4>
+<div class="select_container">
+<select id="sort_<?php echo $this->id; ?>" name="sorting" class="select sort">
+<?php foreach($this->sort as $value => $label): ?>
+	<option value="<?php echo $value; ?>"<?php if($value == $this->sortselected): ?> selected="selected"<?php endif; ?>><?php echo $label; ?></option>
+<?php endforeach; ?>
+</select>
+</div>
+</div>
+<?php endif; ?>
+
+<?php if($this->hasPriceFilter): ?>
+<div class="filtergroup productprice_filter">
+<h4><?php echo $this->ppriceLabel; ?></h4>
+<div class="select_container">
+<select id="price_<?php echo $this->id; ?>" name="pricerange[]" class="select price">
+	<option value=""><?php echo $this->priceBlankLabel; ?></option>
+<?php foreach($this->price as $value => $label): ?>
+	<option value="<?php echo $value; ?>"<?php if($value == $this->priceselected[0]): ?> selected="selected"<?php endif; ?>><?php echo $label; ?></option>
+<?php endforeach; ?>
+</select>
+</div>
+</div>
+<?php endif; ?>
+
+<div class="submit_container"><input type="submit" class="submit" value="<?php echo $this->slabel; ?>"></div>
+
+
+</div>
+</form>
+
+<a href="<?php echo $this->actionClear; ?>" class="clear_filters"><?php echo $this->clearLabel; ?></a>
+
+<div class="clear">&nbsp;</div>
+
+</div>
+<!-- indexer::continue -->
