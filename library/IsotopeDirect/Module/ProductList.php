@@ -67,7 +67,7 @@ class ProductList extends Isotope_ProductList
         }
         
         // Hide item list in reader mode if the respective setting is enabled
-        if ($this->iso_hide_list && \Haste\Input\Input::getAutoItem('product') != '') {
+        if ($this->iso_hide_list && \Haste\Input\Input::getAutoItem('product') != '')
         {
             return '';
         }
