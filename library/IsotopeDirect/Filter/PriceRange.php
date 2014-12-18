@@ -61,7 +61,7 @@ class PriceRange extends Filter
 		    	foreach($arrPosted as $post)
 		    	{
 		    		//Check that they exist
-			    	if (strlen(trim($post)) && in_array($post, array_keys($arrRanges)))
+			    	if (strlen(trim($post)) && (in_array($post, array_keys($arrAvailable)) || in_array(htmlentities($post), array_keys($arrAvailable))))
 			    	{
 				    	$arrURLFilters[] = $post;
 			    	}
