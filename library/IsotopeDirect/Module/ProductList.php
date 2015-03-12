@@ -328,13 +328,18 @@ class ProductList extends Isotope_ProductList
 	            //$arrSorting[$arrSortField[0]] = (strtoupper($arrSortField[1]) == 'DESC' ? RequestCache_Sort::descending() : RequestCache_Sort::ascending());
 	    	}
     	}
-    	
+
     	// Default sorting
-    	if (!($strSorting) && $this->iso_listingSortField && $this->iso_listingSortDirection)
+    	if (!($strSorting))
     	{
-	    	$strSorting = $this->iso_listingSortField . ' ' . $this->iso_listingSortDirection;
-            //$arrSorting[$this->iso_listingSortField] = ($this->iso_listingSortDirection == 'DESC' ? RequestCache_Sort::descending() : RequestCache_Sort::ascending());
-	    	
+	    	if ($this->iso_listingSortField && $this->iso_listingSortDirection)
+	    	{
+		    	$strSorting = $this->iso_listingSortField . ' ' . $this->iso_listingSortDirection;
+	    	}
+	    	else
+	    	{
+		    	$strSorting = 'c.sorting ASC';
+	    	}
     	}
     	
     	
