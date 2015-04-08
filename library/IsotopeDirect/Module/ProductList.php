@@ -251,7 +251,7 @@ class ProductList extends Isotope_ProductList
 		$arrOptions = array
 		(
 			'offset'	=> $offset,
-			'limit'		=> $this->perPage,
+			'limit'		=> $this->perPage ?: $this->numberOfItems,
 			'order'		=> $strSorting,
 		);
 		
