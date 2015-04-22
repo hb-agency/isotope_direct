@@ -18,4 +18,5 @@ $GLOBALS['TL_LANG']['MSC']['directBlankOptionLabel']            = 'All';
 $GLOBALS['TL_LANG']['MSC']['priceRangeLabel']                   = '<span class="from">From</span> %s';
 $GLOBALS['TL_LANG']['MSC']['pricerangeFilterLabel']				= 'Price Range';
 $GLOBALS['TL_LANG']['MSC']['keywordsFilterLabel']				= 'Keyword';
+$GLOBALS['TL_LANG']['MSC']['perpageFilterLabel']				= 'Items per page';
 $GLOBALS['TL_LANG']['MSC']['sortingFilterLabel']				= 'Sorting';

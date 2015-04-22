@@ -189,18 +189,13 @@ class ProductFilter extends Isotope_Module
     	
     	\Controller::redirect($strRedirect);
     }
-    
-    
+
+
     /**
-     * Generate limit options (per-page)
-     * @return varvalue
+     * Generate a limit form
      */
-    protected function generateLimit($blnGenURL=false)
+    protected function generateLimit()
     {
-    	if($blnGenURL)
-    	{
-	    	//return the URL fragment needed for this filter to pass to the lister
-    	}
     }
 
 

@@ -29,15 +29,20 @@ $GLOBALS['PRODUCT_FILTERS'] = array
         'class'		=> 'IsotopeDirect\Filter\Keywords',
         'label'		=> &$GLOBALS['TL_LANG']['MSC']['keywordsFilterLabel'],
     ),
-    'sorting' => array
-    (
-        'class'		=> 'IsotopeDirect\Filter\Sorting',
-        'label'		=> &$GLOBALS['TL_LANG']['MSC']['sortingFilterLabel'],
-    ),
     'pricerange' => array
     (
         'class'		=> 'IsotopeDirect\Filter\PriceRange',
         'label'		=> &$GLOBALS['TL_LANG']['MSC']['pricerangeFilterLabel'],
+    ),
+    'perpage' => array
+    (
+        'class'		=> 'IsotopeDirect\Filter\PerPage',
+        'label'		=> &$GLOBALS['TL_LANG']['MSC']['perpageFilterLabel'],
+    ),
+    'sorting' => array
+    (
+        'class'		=> 'IsotopeDirect\Filter\Sorting',
+        'label'		=> &$GLOBALS['TL_LANG']['MSC']['sortingFilterLabel'],
     ),
 );
 

@@ -57,6 +57,20 @@ window.addEvent('domready', function() {
 </script>
 <?php endif; ?>
 
+<?php if($this->hasPriceFilter): ?>
+<div class="filtergroup productprice_filter">
+<h4><?php echo $this->ppriceLabel; ?></h4>
+<div class="select_container">
+<select id="price_<?php echo $this->id; ?>" name="pricerange[]" class="select price">
+	<option value=""><?php echo $this->priceBlankLabel; ?></option>
+<?php foreach($this->price as $value => $label): ?>
+	<option value="<?php echo $value; ?>"<?php if($value == $this->priceselected[0]): ?> selected="selected"<?php endif; ?>><?php echo $label; ?></option>
+<?php endforeach; ?>
+</select>
+</div>
+</div>
+<?php endif; ?>
+
 <?php if($this->hasSorting): ?>
 <div class="filtergroup productsorting_filter">
 <h4><?php echo $this->psortLabel; ?></h4>
@@ -70,17 +84,14 @@ window.addEvent('domready', function() {
 </div>
 <?php endif; ?>
 
-<?php if($this->hasPriceFilter): ?>
-<div class="filtergroup productprice_filter">
-<h4><?php echo $this->ppriceLabel; ?></h4>
-<div class="select_container">
-<select id="price_<?php echo $this->id; ?>" name="pricerange[]" class="select price">
-	<option value=""><?php echo $this->priceBlankLabel; ?></option>
-<?php foreach($this->price as $value => $label): ?>
-	<option value="<?php echo $value; ?>"<?php if($value == $this->priceselected[0]): ?> selected="selected"<?php endif; ?>><?php echo $label; ?></option>
+<?php if ($this->hasLimit): ?>
+<div class="limit">
+<label for="ctrl_limit_<?php echo $this->id; ?>"><?php echo $this->limitLabel; ?></label>
+<select name="limit" id="ctrl_limit_<?php echo $this->id; ?>" class="select" onchange="document.getElementById('<?php echo $this->formId; ?>').submit();">
+<?php foreach( $this->limitOptions as $option ): ?>
+<option value="<?php echo $option['value']; ?>"<?php if($option['default']) echo ' selected="selected"'; ?>><?php echo $option['label']; ?></option>
 <?php endforeach; ?>
 </select>
-</div>
 </div>
 <?php endif; ?>
 

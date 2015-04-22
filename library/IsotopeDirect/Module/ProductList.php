@@ -89,6 +89,11 @@ class ProductList extends Isotope_ProductList
                 }
             }
         }*/
+        
+        if (is_numeric(\Input::get('perpage')) && intval(\Input::get('perpage')))
+        {
+	        $this->perPage = intval(\Input::get('perpage'));
+        }
 
         return parent::generate();
     }
@@ -215,7 +220,7 @@ class ProductList extends Isotope_ProductList
         if (!is_array($arrValues)) {
             $arrValues = array();
         }
-        
+
         //Add categories to query
         //$arrColumns[] = "c.page_id IN (" . implode(',', $arrCategories) . ")";
 	    $arrColumns[] = Product_Model::getTable() . ".id IN( SELECT pid FROM tl_iso_product_category WHERE page_id IN (" . implode(',', $arrCategories) . "))"; 
@@ -246,15 +251,15 @@ class ProductList extends Isotope_ProductList
 	
 		//Generate pagination and get offset
 		$offset = $this->generatePagination($intTotal);
-		
+
 		//Build options
 		$arrOptions = array
 		(
 			'offset'	=> $offset,
-			'limit'		=> $this->perPage ?: $this->numberOfItems,
+			'limit'		=> ($this->numberOfItems && $this->perPage) ? min($this->numberOfItems, $this->perPage) : ($this->perPage ?: $this->numberOfItems),
 			'order'		=> $strSorting,
 		);
-		
+
 		//Run query
         $objProducts = Product_Model::findPublishedBy(
             $arrColumns,
@@ -328,18 +333,13 @@ class ProductList extends Isotope_ProductList
 	            //$arrSorting[$arrSortField[0]] = (strtoupper($arrSortField[1]) == 'DESC' ? RequestCache_Sort::descending() : RequestCache_Sort::ascending());
 	    	}
     	}
-
+    	
     	// Default sorting
-    	if (!($strSorting))
+    	if (!($strSorting) && $this->iso_listingSortField && $this->iso_listingSortDirection)
     	{
-	    	if ($this->iso_listingSortField && $this->iso_listingSortDirection)
-	    	{
-		    	$strSorting = $this->iso_listingSortField . ' ' . $this->iso_listingSortDirection;
-	    	}
-	    	else
-	    	{
-		    	$strSorting = 'c.sorting ASC';
-	    	}
+	    	$strSorting = $this->iso_listingSortField . ' ' . $this->iso_listingSortDirection;
+            //$arrSorting[$this->iso_listingSortField] = ($this->iso_listingSortDirection == 'DESC' ? RequestCache_Sort::descending() : RequestCache_Sort::ascending());
+	    	
     	}
     	
     	
@@ -444,7 +444,7 @@ class ProductList extends Isotope_ProductList
     	{
 	    	$strWhere = implode(' AND ', $arrWhere);
     	}
-    	
+
     	return array($arrValues, $strWhere, $strSorting);
     }
     
@@ -484,6 +484,92 @@ class ProductList extends Isotope_ProductList
         }
         
         return (int) \Database::getInstance()->prepare($strQuery)->execute($arrValues)->count;
+    }
+
+
+    /**
+     * The ids of all pages we take care of. This is what should later be used eg. for filter data.
+     *
+     * @return array
+     */
+    protected function findCategories()
+    {
+        if (null === $this->arrCategories) {
+
+            if ($this->defineRoot && $this->rootPage > 0) {
+                $objPage = \PageModel::findWithDetails($this->rootPage);
+            } else {
+                global $objPage;
+            }
+
+            $t = \PageModel::getTable();
+            $arrCategories = null;
+            $strWhere = "$t.type!='error_403' AND $t.type!='error_404'";
+
+            if (!BE_USER_LOGGED_IN) {
+                $time = time();
+                //$strWhere .= " AND ($t.start='' OR $t.start<$time) AND ($t.stop='' OR $t.stop>$time) AND $t.published='1'";
+            }
+
+            switch ($this->iso_category_scope) {
+
+                case 'global':
+                    $arrCategories = array($objPage->rootId);
+                    $arrCategories = \Database::getInstance()->getChildRecords($objPage->rootId, 'tl_page', false, $arrCategories, $strWhere);
+                    break;
+
+                case 'current_and_first_child':
+                    $arrCategories   = \Database::getInstance()->execute("SELECT id FROM tl_page WHERE pid={$objPage->id} AND $strWhere")->fetchEach('id');
+                    $arrCategories[] = $objPage->id;
+                    break;
+
+                case 'current_and_all_children':
+                    $arrCategories = array($objPage->id);
+                    $arrCategories = \Database::getInstance()->getChildRecords($objPage->id, 'tl_page', false, $arrCategories, $strWhere);
+                    break;
+
+                case 'parent':
+                    $arrCategories = array($objPage->pid);
+                    break;
+
+                case 'product':
+                    /** @var \Isotope\Model\Product\Standard $objProduct */
+                    $objProduct = Product_Model::findAvailableByIdOrAlias(\Haste\Input\Input::getAutoItem('product'));
+
+                    if ($objProduct !== null) {
+                        $arrCategories = $objProduct->getCategories(true);
+                    } else {
+                        $arrCategories = array(0);
+                    }
+                    break;
+
+                case 'article':
+                    $arrCategories = array($GLOBALS['ISO_CONFIG']['current_article']['pid'] ? : $objPage->id);
+                    break;
+
+                case '':
+                case 'current_category':
+                    $arrCategories = array($objPage->id);
+                    break;
+
+                default:
+                    if (isset($GLOBALS['ISO_HOOKS']['findCategories']) && is_array($GLOBALS['ISO_HOOKS']['findCategories'])) {
+                        foreach ($GLOBALS['ISO_HOOKS']['findCategories'] as $callback) {
+                            $objCallback   = \System::importStatic($callback[0]);
+                            $arrCategories = $objCallback->$callback[1]($this);
+
+                            if ($arrCategories !== false) {
+                                break;
+                            }
+                        }
+                    }
+                    break;
+            }
+
+            $this->arrCategories = empty($arrCategories) ? array(0) : $arrCategories;
+        }
+
+        return $this->arrCategories;
     }
 
 }
