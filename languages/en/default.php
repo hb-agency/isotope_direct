@@ -20,3 +20,4 @@ $GLOBALS['TL_LANG']['MSC']['pricerangeFilterLabel']				= 'Price Range';
 $GLOBALS['TL_LANG']['MSC']['keywordsFilterLabel']				= 'Keyword';
 $GLOBALS['TL_LANG']['MSC']['perpageFilterLabel']				= 'Items per page';
 $GLOBALS['TL_LANG']['MSC']['sortingFilterLabel']				= 'Sorting';
+$GLOBALS['TL_LANG']['MSC']['relevancyFilterLabel']				= 'Relevancy';

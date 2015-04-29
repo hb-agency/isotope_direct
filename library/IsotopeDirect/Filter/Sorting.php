@@ -53,7 +53,7 @@ class Sorting extends Filter
 	    	return false;
     	}
 		
-    	$arrAvailable = array(''=>$GLOBALS['TL_LANG']['MSC'][static::$strKey.'FilterLabel'] . ' default');
+    	$arrAvailable = array(''=>$GLOBALS['TL_LANG']['MSC']['relevancyFilterLabel']);
 		
 		foreach ($arrFields as $field)
 		{

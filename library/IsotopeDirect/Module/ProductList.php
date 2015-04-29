@@ -319,6 +319,7 @@ class ProductList extends Isotope_ProductList
     	$arrWhere	= array();
     	$arrValues 	= array();
     	$arrSorting	= array();
+    	$blnDefaultSort = false;
     	
     	
     	// Sorting
@@ -335,8 +336,9 @@ class ProductList extends Isotope_ProductList
     	}
     	
     	// Default sorting
-    	if (!($strSorting) && $this->iso_listingSortField && $this->iso_listingSortDirection)
+    	if (!$strSorting && $this->iso_listingSortField && $this->iso_listingSortDirection)
     	{
+    		$blnDefaultSort = true;
 	    	$strSorting = $this->iso_listingSortField . ' ' . $this->iso_listingSortDirection;
             //$arrSorting[$this->iso_listingSortField] = ($this->iso_listingSortDirection == 'DESC' ? RequestCache_Sort::descending() : RequestCache_Sort::ascending());
 	    	
@@ -395,6 +397,8 @@ class ProductList extends Isotope_ProductList
     		if (count($arrFields))
     		{
     			$where = array();
+    			$arrSortFields = array();
+    			$arrSortValues = array();
     			include_once(TL_ROOT . '/system/modules/isotope_direct/config/stopwords.php');
     			
 	    		$arrKeywords = array_map(array('IsotopeDirect\Filter\Filter', 'uncleanChars'), explode(',', \Input::get('keywords')));
@@ -419,12 +423,41 @@ class ProductList extends Isotope_ProductList
 					    	$arrValues[] = $strTerm;
 			    		}
 	    			}
-    				
+	    			
+			    	// Do relevancy sorting
+	    			$intPriority = 1;
+		    		foreach ($arrFields as $field)
+		    		{
+		    			foreach ($arrFinalKeywords as $finalKeyword)
+		    			{
+		    				$strTerm = trim($finalKeyword);
+		    				
+		    				if (empty($strTerm) || in_array(strtolower($strTerm), array_map('strtolower', $GLOBALS['KEYWORD_STOP_WORDS'])) || in_array(strtolower($strTerm), array_map('strtolower', $GLOBALS['KEYWORD_STOP_WORDS'])))
+		    				{
+			    				continue;
+		    				}
+		    				
+				    		$arrSortFields[] = "CASE WHEN " . Product_Model::getTable() . ".$field REGEXP ? THEN $intPriority ELSE 9999999999 END";
+					    	$arrSortValues[] = $strTerm;
+						    $intPriority++;
+					    }
+		    		}
     			}
 	    		
 	    		if (count($where))
 	    		{
 			    	$arrWhere['keywords'] = '('.implode(' OR ', $where).')';
+			    	
+			    	// Do relevancy sorting
+			    	if ($blnDefaultSort && !empty($arrSortFields) && !empty($arrSortValues))
+			    	{
+				    	$strSorting = implode(',', $arrSortFields);
+				    	
+				    	foreach ($arrSortValues as $val)
+				    	{
+					    	$arrValues[] = $val;
+				    	}
+			    	}
 			    }
     		}
     	}
