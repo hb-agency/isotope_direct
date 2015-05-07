@@ -321,7 +321,6 @@ class ProductList extends Isotope_ProductList
     	$arrSorting	= array();
     	$blnDefaultSort = false;
     	
-    	
     	// Sorting
     	if (\Input::get('sorting'))
     	{
@@ -341,9 +340,10 @@ class ProductList extends Isotope_ProductList
     		$blnDefaultSort = true;
 	    	$strSorting = $this->iso_listingSortField . ' ' . $this->iso_listingSortDirection;
             //$arrSorting[$this->iso_listingSortField] = ($this->iso_listingSortDirection == 'DESC' ? RequestCache_Sort::descending() : RequestCache_Sort::ascending());
-	    	
     	}
     	
+	    $strSorting = $strSorting ?: 'c.sorting '.($this->iso_listingSortDirection ?: 'ASC');
+	    
     	
     	// Price range
     	if (\Input::get('pricerange'))
