@@ -11,6 +11,8 @@
  
 namespace IsotopeDirect\Module;
 
+use Contao\Model\QueryBuilder;
+
 use IsotopeDirect\Filter\Filter;
 
 use Haste\Haste;
@@ -71,24 +73,6 @@ class ProductList extends Isotope_ProductList
         {
             return '';
         }
-
-        /*$this->iso_filterModules = deserialize($this->iso_filterModules, true);
-
-        // Apply limit from filter module
-        if (is_array($this->iso_filterModules))
-        {
-            // We only do this once. getFiltersAndSorting() then automatically has the correct sorting
-            $this->iso_filterModules = array_reverse($this->iso_filterModules);
-
-            foreach ($this->iso_filterModules as $module)
-            {
-                if ($GLOBALS['ISO_LIMIT'][$module] > 0)
-                {
-                    $this->perPage = $GLOBALS['ISO_LIMIT'][$module];
-                    break;
-                }
-            }
-        }*/
         
         if (is_numeric(\Input::get('perpage')) && intval(\Input::get('perpage')))
         {
@@ -222,7 +206,6 @@ class ProductList extends Isotope_ProductList
         }
 
         //Add categories to query
-        //$arrColumns[] = "c.page_id IN (" . implode(',', $arrCategories) . ")";
 	    $arrColumns[] = Product_Model::getTable() . ".id IN( SELECT pid FROM tl_iso_product_category WHERE page_id IN (" . implode(',', $arrCategories) . "))"; 
 		
 		//Get only cache IDs
@@ -259,17 +242,12 @@ class ProductList extends Isotope_ProductList
 			'limit'		=> ($this->numberOfItems && $this->perPage) ? min($this->numberOfItems, $this->perPage) : ($this->perPage ?: $this->numberOfItems),
 			'order'		=> $strSorting,
 		);
-
+		
 		//Run query
         $objProducts = Product_Model::findPublishedBy(
             $arrColumns,
             $arrValues,
             $arrOptions
-            /*array(
-                 'order'   => $strSorting ?: 'c.sorting',
-                 'filters' => array(),
-                 'sorting' => array(),
-            )*/
         );
 
         return (null === $objProducts) ? array() : $objProducts->getModels();
@@ -321,6 +299,7 @@ class ProductList extends Isotope_ProductList
     	$arrSorting	= array();
     	$blnDefaultSort = false;
     	
+    	
     	// Sorting
     	if (\Input::get('sorting'))
     	{
@@ -330,7 +309,6 @@ class ProductList extends Isotope_ProductList
 	    	if (\Database::getInstance()->fieldExists($arrSortField[0], Product_Model::getTable()) && (strtolower($arrSortField[1])=='asc' || strtolower($arrSortField[1])=='desc'))
 	    	{
 		    	$strSorting = $arrSortField[0] . ' ' . strtoupper($arrSortField[1]);
-	            //$arrSorting[$arrSortField[0]] = (strtoupper($arrSortField[1]) == 'DESC' ? RequestCache_Sort::descending() : RequestCache_Sort::ascending());
 	    	}
     	}
     	
@@ -339,11 +317,9 @@ class ProductList extends Isotope_ProductList
     	{
     		$blnDefaultSort = true;
 	    	$strSorting = $this->iso_listingSortField . ' ' . $this->iso_listingSortDirection;
-            //$arrSorting[$this->iso_listingSortField] = ($this->iso_listingSortDirection == 'DESC' ? RequestCache_Sort::descending() : RequestCache_Sort::ascending());
+	    	
     	}
     	
-	    $strSorting = $strSorting ?: 'c.sorting '.($this->iso_listingSortDirection ?: 'ASC');
-	    
     	
     	// Price range
     	if (\Input::get('pricerange'))
@@ -505,18 +481,29 @@ class ProductList extends Isotope_ProductList
             $arrColumns[] = "$p.published='1' AND ($p.start='' OR $p.start<$time) AND ($p.stop='' OR $p.stop>$time)";
         }
         
-        //Running a straight up SQL query here to optimize
-        $strQuery = "SELECT COUNT($p.id) AS count FROM $p";
-        $strQuery .= " INNER JOIN $t t ON $p.type=t.id";
-        $strQuery .= " WHERE " . implode(" AND ", $arrColumns);
+        $arrFind = array_merge(array
+        (
+        	'table'			=> $p,
+        	'column'		=> $arrColumns,
+        	'value'			=> $arrValues,
+        ), (array)$arrOptions);
         
-        //Group
-        if($arrOptions['group'] !== null)
+        $strQuery = QueryBuilder::find($arrFind);
+        $strQuery = static::replaceSectionsOfString($strQuery, "SELECT ", "FROM ", "SELECT $p.id FROM ", true, false);
+        
+        $arrIDs = \Database::getInstance()->prepare($strQuery)->execute($arrValues)->fetchEach('id');
+        
+        // !HOOK: custom actions
+        if (isset($GLOBALS['ISO_HOOKS']['passFoundProducts']) && is_array($GLOBALS['ISO_HOOKS']['passFoundProducts']))
         {
-	        $strQuery .= " GROUP BY " . $arrOptions['group'];
+            foreach ($GLOBALS['ISO_HOOKS']['passFoundProducts'] as $callback)
+            {
+                $objCallback = \System::importStatic($callback[0]);
+                $objCallback->$callback[1]($arrIDs);
+            }
         }
-        
-        return (int) \Database::getInstance()->prepare($strQuery)->execute($arrValues)->count;
+          
+        return (int) count($arrIDs);
     }
 
 
@@ -604,5 +591,42 @@ class ProductList extends Isotope_ProductList
 
         return $this->arrCategories;
     }
+
+	
+	/**
+	 * Remove sections of a string using a start and end (use "[caption" and "]" to remove any caption blocks)
+	 * @param  string
+	 * @param  string
+	 * @param  string
+	 * @return string
+	 */
+	public static function replaceSectionsOfString($strSubject, $strStart, $strEnd, $strReplace='', $blnCaseSensitive=true, $blnRecursive=true)
+	{
+		// First index of start string
+		$varStart = $blnCaseSensitive ? strpos($strSubject, $strStart) : stripos($strSubject, $strStart);
+		
+		if ($varStart === false)
+			return $strSubject;
+		
+		// First index of end string
+		$varEnd = $blnCaseSensitive ? strpos($strSubject, $strEnd, $varStart+1) : stripos($strSubject, $strEnd, $varStart+1);
+		
+		// The string including the start string, end string, and everything in between
+		$strFound = $varEnd === false ? substr($strSubject, $varStart) : substr($strSubject, $varStart, ($varEnd + strlen($strEnd) - $varStart));
+		
+		// The string after the replacement has been made
+		$strResult = $blnCaseSensitive ? str_replace($strFound, $strReplace, $strSubject) : str_ireplace($strFound, $strReplace, $strSubject);
+		
+		// Check for another occurence of the start string
+		$varStart = $blnCaseSensitive ? strpos($strSubject, $strStart) : stripos($strSubject, $strStart);
+		
+		// If this is recursive and there's another occurence of the start string, keep going
+		if ($blnRecursive && $varStart !== false)
+		{
+			$strResult = static::replaceSectionsofString($strResult, $strStart, $strEnd, $strReplace, $blnCaseSensitive, $blnRecursive);
+		}
+		
+		return $strResult;
+	}
 
 }
