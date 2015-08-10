@@ -364,6 +364,8 @@ class ProductList extends Isotope_ProductList
     		}
     	}
     	
+		$arrSortFields = array();
+		$arrSortValues = array();
     	
     	// Keywords
     	if (\Input::get('keywords'))
@@ -373,8 +375,6 @@ class ProductList extends Isotope_ProductList
     		if (count($arrFields))
     		{
     			$where = array();
-    			$arrSortFields = array();
-    			$arrSortValues = array();
     			include_once(TL_ROOT . '/system/modules/isotope_direct/config/stopwords.php');
     			
 	    		$arrKeywords = array_map(array('IsotopeDirect\Filter\Filter', 'uncleanChars'), explode(',', \Input::get('keywords')));
@@ -424,16 +424,6 @@ class ProductList extends Isotope_ProductList
 	    		{
 			    	$arrWhere['keywords'] = '('.implode(' OR ', $where).')';
 			    	
-			    	// Do relevancy sorting
-			    	if ($blnDefaultSort && !empty($arrSortFields) && !empty($arrSortValues))
-			    	{
-				    	$strSorting = implode(',', $arrSortFields);
-				    	
-				    	foreach ($arrSortValues as $val)
-				    	{
-					    	$arrValues[] = $val;
-				    	}
-			    	}
 			    }
     		}
     	}
@@ -447,6 +437,17 @@ class ProductList extends Isotope_ProductList
                 list($arrValues, $arrWhere, $strSorting) = $objCallback->$callback[1]($arrValues, $arrWhere, $strSorting, $this->findCategories(), $this);
             }
         }
+        
+    	// Do relevancy sorting - todo: need a better way to do this so it can be passed to the hook
+    	if ($blnDefaultSort && !empty($arrSortFields) && !empty($arrSortValues))
+    	{
+	    	$strSorting = implode(',', $arrSortFields);
+	    	
+	    	foreach ($arrSortValues as $val)
+	    	{
+		    	$arrValues[] = $val;
+	    	}
+    	}
     	    	
     	// Now put together the entire WHERE
     	if(count($arrWhere) > 0)
