@@ -30,13 +30,13 @@ class ProductFilter extends Isotope_Module
      * Template
      * @var string
      */
-    protected $strTemplate = 'property_filter_direct_default';
+    protected $strTemplate = 'iso_filter_direct_default';
 
     /**
      * Form ID
      * @var string
      */
-    protected $strFormIdPrefix = 'property_filter_';
+    protected $strFormIdPrefix = 'iso_filter_';
     
     /**
      * Global categories for filters
@@ -63,7 +63,7 @@ class ProductFilter extends Isotope_Module
         }
 
         // Hide filters in reader mode if the respective setting is enabled
-        if ($this->iso_hide_list && \Input::get('item') != '')
+        if ($this->iso_hide_list && \Input::get('product') != '')
         {
             return '';
         }
