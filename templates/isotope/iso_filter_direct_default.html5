@@ -84,11 +84,11 @@ window.addEvent('domready', function() {
 </div>
 <?php endif; ?>
 
-<?php if ($this->hasLimit): ?>
-<div class="limit">
-<label for="ctrl_limit_<?php echo $this->id; ?>"><?php echo $this->limitLabel; ?></label>
-<select name="limit" id="ctrl_limit_<?php echo $this->id; ?>" class="select" onchange="document.getElementById('<?php echo $this->formId; ?>').submit();">
-<?php foreach( $this->limitOptions as $option ): ?>
+<?php if ($this->hasPerPage): ?>
+<div class="perpage">
+<label for="ctrl_perpage_<?php echo $this->id; ?>"><?php echo $this->perpageLabel; ?></label>
+<select name="perpage" id="ctrl_perpage_<?php echo $this->id; ?>" class="select" onchange="document.getElementById('<?php echo $this->formId; ?>').submit();">
+<?php foreach( $this->perpageOptions as $option ): ?>
 <option value="<?php echo $option['value']; ?>"<?php if($option['default']) echo ' selected="selected"'; ?>><?php echo $option['label']; ?></option>
 <?php endforeach; ?>
 </select>

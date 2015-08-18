@@ -49,7 +49,7 @@ class Keywords extends Filter
     	}
     	
 		$objTemplate->hasSearch = true;
-		$objTemplate->hasAutocomplete = strlen($objModule->property_searchAutocomplete) ? true : false;
+		$objTemplate->hasAutocomplete = strlen($objModule->iso_searchAutocomplete) ? true : false;
 		$objTemplate->keywords = htmlentities(Filter::uncleanChars(\Input::get(static::$strKey)));
 		$objTemplate->pkeywordsLabel = $GLOBALS['TL_LANG']['MSC'][static::$strKey.'FilterLabel'];
 		$objTemplate->defaultSearchText = $GLOBALS['TL_LANG']['MSC']['defaultSearchText'];
