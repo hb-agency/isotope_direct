@@ -17,17 +17,14 @@ use Contao\Model\QueryBuilder;
 use IsotopeDirect\Filter\Filter;
 
 use Haste\Haste;
+use Haste\Input\Input;
 use Haste\Generator\RowClass;
 use Haste\Http\Response\HtmlResponse;
 
 use Isotope\Isotope;
 use Isotope\Frontend as Isotope_Frontend;
 use Isotope\Model\Product as Product_Model;
-use Isotope\Model\ProductType as ProductType_Model;
-use Isotope\Model\Product\Standard as Standard_Product;
-use Isotope\Module\Module as Isotope_Module;
 use Isotope\Module\ProductList as Isotope_ProductList;
-use Isotope\RequestCache\Sort as RequestCache_Sort;
 
 
 
@@ -37,7 +34,6 @@ use Isotope\RequestCache\Sort as RequestCache_Sort;
  */
 class ProductList extends Isotope_ProductList
 {
-
     /**
      * Template
      * @var string
@@ -49,7 +45,6 @@ class ProductList extends Isotope_ProductList
      * @var boolean
      */
     protected $blnCacheProperties = false;
-
 
     /**
      * Display a wildcard in the back end
@@ -70,7 +65,7 @@ class ProductList extends Isotope_ProductList
         }
         
         // Hide item list in reader mode if the respective setting is enabled
-        if ($this->iso_hide_list && \Haste\Input\Input::getAutoItem('product') != '')
+        if ($this->iso_hide_list && Input::getAutoItem('product', false, true) != '')
         {
             return '';
         }
@@ -112,32 +107,17 @@ class ProductList extends Isotope_ProductList
      */
     protected function compile()
     {
-        global $objPage;
         
         //Get products
         $arrProducts = $this->findProducts();
-        
-        // No items found
-        if (!is_array($arrProducts) || empty($arrProducts))
-        {
-            // Do not index or cache the page
-            $objPage->noSearch = 1;
-            $objPage->cache = 0;
 
-            $this->Template->empty = true;
-            $this->Template->type = 'empty';
-            $this->Template->message = $this->iso_emptyMessage ? $this->iso_noProducts : $GLOBALS['TL_LANG']['MSC']['noProducts'];
-            $this->Template->items = array();
+        // No products found
+        if (!is_array($arrProducts) || empty($arrProducts)) {
+            $this->compileEmptyMessage();
 
             return;
         }
-		
-		//Handle jump to first
-        if ($this->iso_jump_first && \Input::get('product') == '')
-        {
-            $objProduct = $objProducts->first();
-            $this->redirect($objProduct->href_reader);
-        }
+
         $arrBuffer = array();
 
         $arrDefaultOptions = $this->getDefaultProductOptions();
@@ -231,7 +211,7 @@ class ProductList extends Isotope_ProductList
         }
 		
 		//Calculate the total on the query
-        $intTotal = static::countPublishedBy($arrColumns, $arrValues, $arrOptions);
+        $intTotal = static::countPublishedBy($arrColumns, $arrValues);
 	
 		//Generate pagination and get offset
 		$offset = $this->generatePagination($intTotal);
@@ -294,12 +274,9 @@ class ProductList extends Isotope_ProductList
     {
     	$strWhere 	= '';
     	$strSorting = '';
-    	$arrFilters	= array();
     	$arrWhere	= array();
     	$arrValues 	= array();
-    	$arrSorting	= array();
     	$blnDefaultSort = false;
-    	
     	
     	// Sorting
     	if (\Input::get('sorting'))
@@ -320,8 +297,7 @@ class ProductList extends Isotope_ProductList
 	    	$strSorting = $this->iso_listingSortField . ' ' . $this->iso_listingSortDirection;
 	    	
     	}
-    	
-    	
+
     	// Price range
     	if (\Input::get('pricerange'))
     	{
@@ -465,12 +441,11 @@ class ProductList extends Isotope_ProductList
      * @param   mixed
      * @param   mixed
      * @param   array
-     * @return  \Collection
+     * @return  \Contao\Collection
      */
     public static function countPublishedBy($arrColumns, $arrValues, $arrOptions=array())
     {
         $p = Product_Model::getTable();
-        $t = ProductType_Model::getTable();
 
         $arrValues = (array) $arrValues;
 

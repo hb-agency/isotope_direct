@@ -11,12 +11,13 @@
 
 namespace IsotopeDirect\Filter;
 
+use IsotopeDirect\Interfaces\IsotopeDirectFilter;
 
 /**
  * Class PerPage
  * Per Page filter
  */
-class PerPage extends Filter
+class PerPage extends Filter implements IsotopeDirectFilter
 {
 	
 	/**
@@ -24,14 +25,12 @@ class PerPage extends Filter
 	 * @var string
 	 */
 	protected static $strKey = 'perpage';
-	
 
 	/**
      * Add this filter to the module's template or get the URL params
      * @param   array
-     * @param   object
-     * @param   array
-     * @param   object
+     * @param   Contao\Template
+     * @param   Contao\Module
      * @param   boolean
      * @return  mixed (redirect params or false)
      */

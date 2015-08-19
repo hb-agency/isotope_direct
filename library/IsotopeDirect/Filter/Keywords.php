@@ -11,12 +11,13 @@
 
 namespace IsotopeDirect\Filter;
 
+use IsotopeDirect\Interfaces\IsotopeDirectFilter;
 
 /**
  * Class Keywords
  * Keywords filter
  */
-class Keywords extends Filter
+class Keywords extends Filter implements IsotopeDirectFilter
 {
 	
 	/**
@@ -29,11 +30,10 @@ class Keywords extends Filter
 	/**
      * Add this filter to the module's template or get the URL params
      * @param   array
-     * @param   object
-     * @param   array
-     * @param   object
+     * @param   Contao\Template
+     * @param   Contao\Module
      * @param   boolean
-     * @return  mixed (redirect params or false)
+     * @return  mixed string|bool|void
      */
 	public static function generateFilter(&$arrCategories, &$objTemplate, $objModule, $blnGenURL=false)
 	{
@@ -53,6 +53,7 @@ class Keywords extends Filter
 		$objTemplate->keywords = htmlentities(Filter::uncleanChars(\Input::get(static::$strKey)));
 		$objTemplate->pkeywordsLabel = $GLOBALS['TL_LANG']['MSC'][static::$strKey.'FilterLabel'];
 		$objTemplate->defaultSearchText = $GLOBALS['TL_LANG']['MSC']['defaultSearchText'];
+
 	}
 
 }
