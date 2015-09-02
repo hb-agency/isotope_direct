@@ -57,12 +57,12 @@ class PerPage extends Filter implements IsotopeDirectFilter
 	        $arrLimit   = array_unique($arrLimit);
 	        sort($arrLimit);
 	
-	        foreach ($arrLimit as $limit) {
+	        foreach ($arrLimit as $i=>$limit) {
 	            $arrOptions[] = array
 	            (
 	                'label'   => $limit,
 	                'value'   => $limit,
-	                'default' => (\Input::get('perpage') == $limit ? '1' : ''),
+	                'default' => !\Input::get('perpage') && $i == 0 ? '1' : (\Input::get('perpage') == $limit ? '1' : ''),
 	            );
 	        }
 

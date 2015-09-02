@@ -17,6 +17,7 @@ use IsotopeDirect\Filter\Filter;
 use Isotope\Isotope;
 use Isotope\Model\Product as Product_Model;
 use Isotope\Module\Module as Isotope_Module;
+use Haste\Http\Response\JsonResponse;
 
 
 /**
@@ -61,6 +62,8 @@ class ProductFilter extends Isotope_Module
 
             return $objTemplate->parse();
         }
+
+        $this->generateAjax();
 
         // Hide filters in reader mode if the respective setting is enabled
         if ($this->iso_hide_list && \Input::get('product') != '')
@@ -198,65 +201,36 @@ class ProductFilter extends Isotope_Module
     {
     }
 
-
     /**
      * Generate ajax
-     * @return mixed
      */
     public function generateAjax()
     {
-        /*$strKeywords = \Input::get('keywords');
-        
-        if ( (($this->property_searchAutocomplete && \Input::get('autocomplete')) || ($this->property_locationsAutocomplete && \Input::get('locationsautocomplete'))) && (!empty($strKeywords) || !empty($strLocations)) )
+        if (!\Environment::get('isAjaxRequest')) {
+            return;
+        }
+		
+		// todo: Use the current filters too...
+        if ($this->iso_searchAutocomplete && \Input::get('iso_autocomplete') == $this->id) 
         {
-	    	\System::loadLanguageFile('tl_property');
-    		
-            $time = time();
-			$arrRegexs = array();
-			$arrValues = array();
-            $t = Product_Model::getTable();
-	    	$arrFields = (array)deserialize(\Input::get('autocomplete') ? $this->property_searchAutocomplete : $this->property_locationsAutocomplete);
-            $arrCategories = $this->findCategories($this->property_category_scope);
-            
-			$arrColumns = array("$t.id IN( SELECT pid FROM tl_property_categories WHERE page_id IN (" . implode(',', $this->arrCategories) . "))");
-			
-			foreach ($arrFields as $field)
-			{
-				if ($GLOBALS['TL_DCA']['tl_property']['fields'][$field]['sql'] != 'text NULL' && $GLOBALS['TL_DCA']['tl_property']['fields'][$field]['sql'] != 'blob NULL')
-				{
-					$arrRegexs[] = "$t." . $field . " REGEXP ?";
-					$arrValues[] = \Input::get('autocomplete') ? $strKeywords : $strLocations;
-				}
-			}
-			
-			$arrColumns[] = '('. implode(" OR ", $arrRegexs) . ')';
-        
-	        //Add where statement from module config
-	        if ($this->property_list_where != '') {
-	            $arrColumns[] = $this->property_list_where;
-	        }
-			
-            $objProperties = Product_Model::findPublishedBy($arrColumns, $arrValues, array('limit'=>300, 'order'=>'tstamp DESC'));
-            
-            if ($objProperties !== null && $objProperties->count())
-            {
-            	$arrReturn = array();
-            	
-            	while ($objProperties->next())
-            	{
-					foreach ($arrFields as $field)
-					{
-						if ($GLOBALS['TL_DCA']['tl_property']['fields'][$field]['sql'] != 'text NULL' && $GLOBALS['TL_DCA']['tl_property']['fields'][$field]['sql'] != 'blob NULL')
-						{
-							$arrReturn[] = $objProperties->current()->{$field};
-						}
-					}
-            	}
-				
-	            return array_values(array_unique($arrReturn));
-            }
-        }*/
+	        $arrWhere = array("c.page_id IN (" . implode(',', array_map('intval', $this->findCategories())) . ")");
+	        $arrValues = array();
+	        
+        	$keywords = explode(' ', \Input::get('query'));
+        	for ($i = 0; $i < count($keywords); $i++) {
+	        	$arrWhere[] = Product_Model::getTable().".".$this->iso_searchAutocomplete." REGEXP ?";
+	        	$arrValues[] = \Input::get('query');
+        	}
+        	
+            $objProducts = Product_Model::findPublishedBy($arrWhere, $arrValues, array('order' => "c.sorting"));
 
-        return '';
+            if (null === $objProducts) {
+                $objResponse = new JsonResponse(array('suggestions'=>array()));
+                $objResponse->send();
+            }
+
+            $objResponse = new JsonResponse(array('suggestions'=>array_values(array_map('html_entity_decode', $objProducts->fetchEach($this->iso_searchAutocomplete)))));
+            $objResponse->send();
+        }
     }
 }

@@ -13,7 +13,7 @@
 /**
  * Palettes
  */
-$GLOBALS['TL_DCA']['tl_module']['palettes']['iso_productlist_direct'] = str_replace('{config_legend},', '{config_legend},iso_searchFields,', $GLOBALS['TL_DCA']['tl_module']['palettes']['iso_productlist']);
+$GLOBALS['TL_DCA']['tl_module']['palettes']['iso_productlist_direct'] = str_replace(array('{config_legend},',',iso_filterModules'), array('{config_legend},iso_searchFields,',''), $GLOBALS['TL_DCA']['tl_module']['palettes']['iso_productlist']);
 $GLOBALS['TL_DCA']['tl_module']['palettes']['iso_productfilter_direct'] = str_replace(array('{config_legend},','iso_searchFields,'), array('{config_legend},iso_filterTypes,',''), $GLOBALS['TL_DCA']['tl_module']['palettes']['iso_productfilter']);
 
 

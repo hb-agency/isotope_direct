@@ -20,39 +20,19 @@
 </div>
 <?php endif; ?>
 
-<?php if ($this->hasAutocomplete):
-$GLOBALS['TL_CSS'][] = \Haste\Util\Debug::uncompressedFile('system/modules/isotope/assets/plugins/autocompleter/Autocompleter.min.css');
-?>
-<script src="<?php echo \Haste\Util\Debug::uncompressedFile('system/modules/isotope/assets/plugins/autocompleter/Autocompleter.min.js'); ?>"></script>
+<?php if ($this->hasAutocomplete): ?>
+<?php $GLOBALS['TL_CSS'][] = \Haste\Util\Debug::uncompressedFile('composer/vendor/filsh/jquery-autocomplete/content/styles.css'); ?>
+<?php $GLOBALS['TL_JAVASCRIPT'][] = 'composer/vendor/filsh/jquery-autocomplete/scripts/jquery.mackjax.js'; ?>
+<?php $GLOBALS['TL_JAVASCRIPT'][] = 'composer/vendor/filsh/jquery-autocomplete/src/jquery.autocomplete.js'; ?>
 <script>
-window.addEvent('domready', function() {
-    var requested = false;
-    var searchField = document.id('ctrl_keywords_<?php echo $this->id; ?>').addEvent('keyup', function(e) {
-        if (requested)
-            return false;
-
-        requested = true;
-
-        new Request.JSON({
-            'url': '<?php echo \Environment::get('request'); ?>',
-            'method': 'get',
-            'data': {
-                'iso_autocomplete': '<?php echo $this->id; ?>',
-            },
-            onComplete: function(json) {
-                new Autocompleter.Local(searchField, json, {
-                    'minLength': 1,
-                    'autoSubmit': true,
-                    'selectMode': 'pick',
-                    'filterSubset': true,
-                    'onSelect': function(el)
-                    {
-                        el.getParent('form').submit();
-                    }
-                }).query();
-            }
-        }).send();
-    });
+jQuery(document).ready(function(){
+	$('#ctrl_keywords_<?php echo $this->id; ?>').autocomplete({
+	    serviceUrl: '<?php echo \Environment::get('request').(strpos(\Environment::get('request'), '?') !== false ? '&' : '?'); ?>iso_autocomplete=<?php echo $this->id; ?>',
+	    triggerSelectOnValidInput: false,
+	    onSelect: function (suggestion) {
+            $('#ctrl_keywords_<?php echo $this->id; ?>').parents('form').submit();
+	    }
+	});
 });
 </script>
 <?php endif; ?>
