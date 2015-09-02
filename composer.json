@@ -24,7 +24,7 @@
         "terminal42/contao-namespace-class-loader":"~1.0",
         "isotope/isotope-core": ">=1.0.1",
         "codefog/contao-haste":"~4.3",
-        "filsh/jquery-autocomplete"
+        "filsh/jquery-autocomplete": "dev-master"
     },
     "autoload": {
         "psr-0": {
