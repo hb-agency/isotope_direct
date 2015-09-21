@@ -233,4 +233,90 @@ class ProductFilter extends Isotope_Module
             $objResponse->send();
         }
     }
+
+
+    /**
+     * The ids of all pages we take care of. This is what should later be used eg. for filter data.
+     *
+     * @return array
+     */
+    protected function findCategories()
+    {
+        if (null === $this->arrCategories) {
+
+            if ($this->defineRoot && $this->rootPage > 0) {
+                $objPage = \PageModel::findWithDetails($this->rootPage);
+            } else {
+                global $objPage;
+            }
+
+            $t = \PageModel::getTable();
+            $arrCategories = null;
+            $strWhere = "$t.type!='error_403' AND $t.type!='error_404'";
+
+            if (!BE_USER_LOGGED_IN) {
+                $time = time();
+                //$strWhere .= " AND ($t.start='' OR $t.start<$time) AND ($t.stop='' OR $t.stop>$time) AND $t.published='1'";
+            }
+
+            switch ($this->iso_category_scope) {
+
+                case 'global':
+                    $arrCategories = array($objPage->rootId);
+                    $arrCategories = \Database::getInstance()->getChildRecords($objPage->rootId, 'tl_page', false, $arrCategories, $strWhere);
+                    break;
+
+                case 'current_and_first_child':
+                    $arrCategories   = \Database::getInstance()->execute("SELECT id FROM tl_page WHERE pid={$objPage->id} AND $strWhere")->fetchEach('id');
+                    $arrCategories[] = $objPage->id;
+                    break;
+
+                case 'current_and_all_children':
+                    $arrCategories = array($objPage->id);
+                    $arrCategories = \Database::getInstance()->getChildRecords($objPage->id, 'tl_page', false, $arrCategories, $strWhere);
+                    break;
+
+                case 'parent':
+                    $arrCategories = array($objPage->pid);
+                    break;
+
+                case 'product':
+                    /** @var \Isotope\Model\Product\Standard $objProduct */
+                    $objProduct = Product_Model::findAvailableByIdOrAlias(\Haste\Input\Input::getAutoItem('product'));
+
+                    if ($objProduct !== null) {
+                        $arrCategories = $objProduct->getCategories(true);
+                    } else {
+                        $arrCategories = array(0);
+                    }
+                    break;
+
+                case 'article':
+                    $arrCategories = array($GLOBALS['ISO_CONFIG']['current_article']['pid'] ? : $objPage->id);
+                    break;
+
+                case '':
+                case 'current_category':
+                    $arrCategories = array($objPage->id);
+                    break;
+
+                default:
+                    if (isset($GLOBALS['ISO_HOOKS']['findCategories']) && is_array($GLOBALS['ISO_HOOKS']['findCategories'])) {
+                        foreach ($GLOBALS['ISO_HOOKS']['findCategories'] as $callback) {
+                            $objCallback   = \System::importStatic($callback[0]);
+                            $arrCategories = $objCallback->$callback[1]($this);
+
+                            if ($arrCategories !== false) {
+                                break;
+                            }
+                        }
+                    }
+                    break;
+            }
+
+            $this->arrCategories = empty($arrCategories) ? array(0) : $arrCategories;
+        }
+
+        return $this->arrCategories;
+    }
 }
