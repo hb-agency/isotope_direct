@@ -17,6 +17,7 @@ use IsotopeDirect\Filter\Filter;
 use Isotope\Isotope;
 use Isotope\Model\Product as Product_Model;
 use Isotope\Module\Module as Isotope_Module;
+use Haste\Haste;
 use Haste\Http\Response\JsonResponse;
 
 
@@ -219,8 +220,12 @@ class ProductFilter extends Isotope_Module
         	$keywords = explode(' ', \Input::get('query'));
         	for ($i = 0; $i < count($keywords); $i++) {
 	        	$arrWhere[] = Product_Model::getTable().".".$this->iso_searchAutocomplete." REGEXP ?";
-	        	$arrValues[] = \Input::get('query');
+	        	$arrValues[] = $keywords[$i];
         	}
+
+	        if ($this->iso_list_where != '') {
+	            $arrWhere[] = Haste::getInstance()->call('replaceInsertTags', $this->iso_list_where);
+	        }
         	
             $objProducts = Product_Model::findPublishedBy($arrWhere, $arrValues, array('order' => "c.sorting"));
 
