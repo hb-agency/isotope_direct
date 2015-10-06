@@ -266,10 +266,13 @@ class ProductFilter extends Isotope_Module
 
             $t = \PageModel::getTable();
             $arrCategories = null;
+            $arrUnpublished = array();
             $strWhere = "$t.type!='error_403' AND $t.type!='error_404'";
 
             if (!BE_USER_LOGGED_IN) {
                 $time = time();
+                $objUnpublished = \PageModel::findBy(array("($t.start!='' AND $t.start>$time) OR ($t.stop!='' AND $t.stop<$time) OR $t.published=?"), array(''));
+                $arrUnpublished = $objUnpublished->fetchEach('id');
                 //$strWhere .= " AND ($t.start='' OR $t.start<$time) AND ($t.stop='' OR $t.stop>$time) AND $t.published='1'";
             }
 
@@ -278,6 +281,7 @@ class ProductFilter extends Isotope_Module
                 case 'global':
                     $arrCategories = array($objPage->rootId);
                     $arrCategories = \Database::getInstance()->getChildRecords($objPage->rootId, 'tl_page', false, $arrCategories, $strWhere);
+                    $arrCategories = array_diff($arrCategories, $arrUnpublished);
                     break;
 
                 case 'current_and_first_child':
@@ -288,6 +292,7 @@ class ProductFilter extends Isotope_Module
                 case 'current_and_all_children':
                     $arrCategories = array($objPage->id);
                     $arrCategories = \Database::getInstance()->getChildRecords($objPage->id, 'tl_page', false, $arrCategories, $strWhere);
+                    $arrCategories = array_diff($arrCategories, $arrUnpublished);
                     break;
 
                 case 'parent':
