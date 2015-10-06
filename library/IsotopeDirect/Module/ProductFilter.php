@@ -214,13 +214,22 @@ class ProductFilter extends Isotope_Module
 		// todo: Use the current filters too...
         if ($this->iso_searchAutocomplete && \Input::get('iso_autocomplete') == $this->id) 
         {
+			include_once(TL_ROOT . '/system/modules/isotope_direct/config/stopwords.php');
 	        $arrWhere = array("c.page_id IN (" . implode(',', array_map('intval', $this->findCategories())) . ")");
 	        $arrValues = array();
 	        
         	$keywords = explode(' ', \Input::get('query'));
-        	for ($i = 0; $i < count($keywords); $i++) {
+        	for ($i = 0; $i < count($keywords); $i++) 
+        	{
+				$strTerm = trim($keywords[$i]);
+				if (empty($strTerm) || 
+					in_array(strtolower($strTerm), array_map('strtolower', $GLOBALS['KEYWORD_STOP_WORDS'])) || 
+					in_array(strtolower($strTerm), array_map('strtolower', $GLOBALS['KEYWORD_STOP_WORDS'])))
+				{
+    				continue;
+				}
 	        	$arrWhere[] = Product_Model::getTable().".".$this->iso_searchAutocomplete." REGEXP ?";
-	        	$arrValues[] = $keywords[$i];
+	        	$arrValues[] = $strTerm;
         	}
 
 	        if ($this->iso_list_where != '') {
