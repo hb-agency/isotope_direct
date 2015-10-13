@@ -224,6 +224,9 @@ class ProductList extends Isotope_ProductList
 			'order'		=> $strSorting,
 		);
 		
+		// Temporary fix for category sorting values
+	    $arrColumns[] = "c.page_id IN (" . implode(',', $arrCategories) . ")";
+		
 		//Run query
         $objProducts = Product_Model::findPublishedBy(
             $arrColumns,
