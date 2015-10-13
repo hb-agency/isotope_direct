@@ -425,6 +425,9 @@ class ProductList extends Isotope_ProductList
 		    	$arrValues[] = $val;
 	    	}
     	}
+    	
+    	// Sort by category if nothing else
+    	$strSorting = $strSorting ?: "c.sorting ".$this->iso_listingSortDirection;
     	    	
     	// Now put together the entire WHERE
     	if(count($arrWhere) > 0)
