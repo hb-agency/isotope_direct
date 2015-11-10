@@ -67,7 +67,7 @@ class Sorting extends Filter implements IsotopeDirectFilter
     	{
 			$objTemplate->hasSorting = true;
 			$objTemplate->sort = $arrAvailable;
-			$objTemplate->sortselected = \Input::get(static::$strKey);
+			$objTemplate->sortselected = \Input::get(static::$strKey) ?: ($objModule->iso_listingSortField ? $objModule->iso_listingSortField.'-'.strtolower($objModule->iso_listingSortDirection) : '');
 			$objTemplate->psortLabel = $GLOBALS['TL_LANG']['MSC'][static::$strKey.'FilterLabel'];
     	}
 	}
