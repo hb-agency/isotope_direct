@@ -1,11 +1,11 @@
 <?php
 
 /**
- * Copyright (C) 2014 HB Agency
- * 
- * @author		Blair Winans <bwinans@hbagency.com>
- * @author		Adam Fisher <afisher@hbagency.com>
- * @link		http://www.hbagency.com
+ * Copyright (C) 2015 Rhyme Digital, LLC
+ *
+ * @author		Blair Winans <blair@rhyme.digital>
+ * @author		Adam Fisher <adam@rhyme.digital>
+ * @link		http://rhyme.digital
  * @license		http://www.gnu.org/licenses/lgpl-3.0.html LGPL
  */
 
@@ -29,15 +29,20 @@ $GLOBALS['PRODUCT_FILTERS'] = array
         'class'		=> 'IsotopeDirect\Filter\Keywords',
         'label'		=> &$GLOBALS['TL_LANG']['MSC']['keywordsFilterLabel'],
     ),
-    'sorting' => array
-    (
-        'class'		=> 'IsotopeDirect\Filter\Sorting',
-        'label'		=> &$GLOBALS['TL_LANG']['MSC']['sortingFilterLabel'],
-    ),
     'pricerange' => array
     (
         'class'		=> 'IsotopeDirect\Filter\PriceRange',
         'label'		=> &$GLOBALS['TL_LANG']['MSC']['pricerangeFilterLabel'],
+    ),
+    'perpage' => array
+    (
+        'class'		=> 'IsotopeDirect\Filter\PerPage',
+        'label'		=> &$GLOBALS['TL_LANG']['MSC']['perpageFilterLabel'],
+    ),
+    'sorting' => array
+    (
+        'class'		=> 'IsotopeDirect\Filter\Sorting',
+        'label'		=> &$GLOBALS['TL_LANG']['MSC']['sortingFilterLabel'],
     ),
 );
 

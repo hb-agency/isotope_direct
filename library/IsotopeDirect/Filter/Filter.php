@@ -1,22 +1,26 @@
 <?php
 
 /**
- * Copyright (C) 2014 HB Agency
- * 
- * @author		Blair Winans <bwinans@hbagency.com>
- * @author		Adam Fisher <afisher@hbagency.com>
- * @link		http://www.hbagency.com
+ * Copyright (C) 2015 Rhyme Digital, LLC
+ *
+ * @author		Blair Winans <blair@rhyme.digital>
+ * @author		Adam Fisher <adam@rhyme.digital>
+ * @link		http://rhyme.digital
  * @license		http://www.gnu.org/licenses/lgpl-3.0.html LGPL
  */
 
 namespace IsotopeDirect\Filter;
 
+use Contao\Controller;
+use IsotopeDirect\Interfaces\IsotopeDirectFilter;
+use Isotope\Model\Product;
+use Isotope\Model\ProductCategory;
 
 /**
  * Class Filter
  * Base class for IsotopeDirect filters
  */
-class Filter extends \Controller
+abstract class Filter extends Controller implements IsotopeDirectFilter
 {
 	
 	/**
@@ -24,18 +28,6 @@ class Filter extends \Controller
 	 * @var string
 	 */
 	protected static $strKey = '';
-
-	/**
-     * Table name
-     * @var string
-     */
-    protected static $strProductTable = 'tl_iso_product';
-    
-    /**
-     * Categories table name
-     * @var string
-     */
-    protected static $strCategoryTable = 'tl_iso_product_category';
     
 	
     /**
@@ -66,12 +58,11 @@ class Filter extends \Controller
      * @param   array
      * @param   object
      * @param   boolean
-     * @return  mixed (redirect params or false)
+     * @return  mixed string|bool|void
      */
 	public static function generateFilter(&$arrCategories, &$objTemplate, $objModule, $blnGenURL=false)
-	{
-		return false;
-	}
+    {
+    }
 	
 
     /**
@@ -79,14 +70,13 @@ class Filter extends \Controller
      * @param   array
      * @return  array
      */
-    public static function findAllAvailable(&$arrCategories, $arrOptions = array())
+    public static function findAllAvailable(&$arrCategories)
     {
     	$strHash = md5(implode(',', $arrCategories));
     	
     	if (!\Cache::has(static::$strKey . '-' . $strHash))
     	{
-	        $t = static::$strProductTable;
-	        $c = static::$strCategoryTable;
+	        $t = Product::getTable();
 	        $arrAvailable = array();
 	        
 	        if(!is_array($arrCategories) || empty($arrCategories))
@@ -102,7 +92,7 @@ class Filter extends \Controller
 	            $strQuery .= " AND $t.published='1' AND ($t.start='' OR $t.start<$time) AND ($t.stop='' OR $t.stop>$time)";
 	        }
 
-	        $objResult = \Database::getInstance()->executeUncached($strQuery);
+	        $objResult = \Database::getInstance()->execute($strQuery);
 	        
 	        if ($objResult->numRows)
 	        {
@@ -129,13 +119,13 @@ class Filter extends \Controller
      * @param   array
      * @return  array
      */
-	public static function getProductsForCategories(&$arrCategories, $arrOptions = array())
+	public static function getProductsForCategories(&$arrCategories)
 	{
     	$strHash = md5(implode(',', $arrCategories));
     	
     	if (!\Cache::has('category-products-' . $strHash))
     	{
-	        $c = static::$strCategoryTable;
+	        $c = ProductCategory::getTable();
 	        
 	        if(!is_array($arrCategories) || empty($arrCategories))
 	        {
@@ -151,6 +141,5 @@ class Filter extends \Controller
 	    
         return \Cache::get('category-products-' . $strHash);
 	}
-
 
 }

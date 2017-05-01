@@ -1,22 +1,24 @@
 <?php
 
 /**
- * Copyright (C) 2014 HB Agency
- * 
- * @author		Blair Winans <bwinans@hbagency.com>
- * @author		Adam Fisher <afisher@hbagency.com>
- * @link		http://www.hbagency.com
+ * Copyright (C) 2015 Rhyme Digital, LLC
+ *
+ * @author		Blair Winans <blair@rhyme.digital>
+ * @author		Adam Fisher <adam@rhyme.digital>
+ * @link		http://rhyme.digital
  * @license		http://www.gnu.org/licenses/lgpl-3.0.html LGPL
  */
 
 namespace IsotopeDirect\Filter;
 
+use Isotope\Model\Product;
+use IsotopeDirect\Interfaces\IsotopeDirectFilter;
 
 /**
  * Class Sorting
  * Sorting filter
  */
-class Sorting extends Filter
+class Sorting extends Filter implements IsotopeDirectFilter
 {
 	
 	/**
@@ -25,20 +27,18 @@ class Sorting extends Filter
 	 */
 	protected static $strKey = 'sorting';
 	
-
 	/**
      * Add this filter to the module's template or get the URL params
      * @param   array
-     * @param   object
-     * @param   array
-     * @param   object
+     * @param   Contao\Template
+     * @param   Contao\Module
      * @param   boolean
-     * @return  mixed (redirect params or false)
+     * @return  mixed string|bool|void
      */
 	public static function generateFilter(&$arrCategories, &$objTemplate, $objModule, $blnGenURL=false)
 	{
-        \System::loadLanguageFile(static::$strProductTable);
-        $objModule->loadDataContainer(static::$strProductTable);
+        \System::loadLanguageFile(Product::getTable());
+        \Controller::loadDataContainer(Product::getTable());
         
 		$arrFields = deserialize($objModule->iso_sortingFields, true);
 
@@ -53,12 +53,12 @@ class Sorting extends Filter
 	    	return false;
     	}
 		
-    	$arrAvailable = array(''=>$GLOBALS['TL_LANG']['MSC'][static::$strKey.'FilterLabel'] . ' default');
+    	$arrAvailable = array(''=>$GLOBALS['TL_LANG']['MSC']['relevancyFilterLabel']);
 		
 		foreach ($arrFields as $field)
 		{
 			list($asc, $desc) = static::getSortingLabels($field);
-			$strLabel = is_array($GLOBALS['TL_DCA'][static::$strProductTable]['fields'][$field]['label']) ? $GLOBALS['TL_DCA'][static::$strProductTable]['fields'][$field]['label'][0] : $field;
+			$strLabel = is_array($GLOBALS['TL_DCA'][Product::getTable()]['fields'][$field]['label']) ? $GLOBALS['TL_DCA'][Product::getTable()]['fields'][$field]['label'][0] : $field;
 			$arrAvailable[$field.'-asc'] = $strLabel . ' ' . $asc;
 			$arrAvailable[$field.'-desc'] = $strLabel . ' ' . $desc;
 		}
@@ -67,7 +67,7 @@ class Sorting extends Filter
     	{
 			$objTemplate->hasSorting = true;
 			$objTemplate->sort = $arrAvailable;
-			$objTemplate->sortselected = \Input::get(static::$strKey);
+			$objTemplate->sortselected = \Input::get(static::$strKey) ?: ($objModule->iso_listingSortField ? $objModule->iso_listingSortField.'-'.strtolower($objModule->iso_listingSortDirection) : '');
 			$objTemplate->psortLabel = $GLOBALS['TL_LANG']['MSC'][static::$strKey.'FilterLabel'];
     	}
 	}
@@ -80,7 +80,7 @@ class Sorting extends Filter
      */
     protected static function getSortingLabels($field)
     {
-        $arrData = $GLOBALS['TL_DCA'][static::$strProductTable]['fields'][$field];
+        $arrData = $GLOBALS['TL_DCA'][Product::getTable()]['fields'][$field];
 
         switch ($arrData['eval']['rgxp'])
         {

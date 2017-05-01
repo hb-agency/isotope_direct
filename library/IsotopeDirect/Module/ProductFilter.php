@@ -1,11 +1,11 @@
 <?php
 
 /**
- * Copyright (C) 2014 HB Agency
+ * Copyright (C) 2015 Rhyme Digital, LLC
  * 
- * @author		Blair Winans <bwinans@hbagency.com>
- * @author		Adam Fisher <afisher@hbagency.com>
- * @link		http://www.hbagency.com
+ * @author		Blair Winans <blair@rhyme.digital>
+ * @author		Adam Fisher <adam@rhyme.digital>
+ * @link		http://rhyme.digital
  * @license		http://www.gnu.org/licenses/lgpl-3.0.html LGPL
  */
 
@@ -17,6 +17,8 @@ use IsotopeDirect\Filter\Filter;
 use Isotope\Isotope;
 use Isotope\Model\Product as Product_Model;
 use Isotope\Module\Module as Isotope_Module;
+use Haste\Haste;
+use Haste\Http\Response\JsonResponse;
 
 
 /**
@@ -30,13 +32,13 @@ class ProductFilter extends Isotope_Module
      * Template
      * @var string
      */
-    protected $strTemplate = 'property_filter_direct_default';
+    protected $strTemplate = 'iso_filter_direct_default';
 
     /**
      * Form ID
      * @var string
      */
-    protected $strFormIdPrefix = 'property_filter_';
+    protected $strFormIdPrefix = 'iso_filter_';
     
     /**
      * Global categories for filters
@@ -62,8 +64,10 @@ class ProductFilter extends Isotope_Module
             return $objTemplate->parse();
         }
 
+        $this->generateAjax();
+
         // Hide filters in reader mode if the respective setting is enabled
-        if ($this->iso_hide_list && \Input::get('item') != '')
+        if ($this->iso_hide_list && \Input::get('product') != '')
         {
             return '';
         }
@@ -189,79 +193,149 @@ class ProductFilter extends Isotope_Module
     	
     	\Controller::redirect($strRedirect);
     }
-    
-    
+
+
     /**
-     * Generate limit options (per-page)
-     * @return varvalue
+     * Generate a limit form
      */
-    protected function generateLimit($blnGenURL=false)
+    protected function generateLimit()
     {
-    	if($blnGenURL)
-    	{
-	    	//return the URL fragment needed for this filter to pass to the lister
-    	}
+    }
+
+    /**
+     * Generate ajax
+     */
+    public function generateAjax()
+    {
+        if (!\Environment::get('isAjaxRequest')) {
+            return;
+        }
+		
+		// todo: Use the current filters too...
+        if ($this->iso_searchAutocomplete && \Input::get('iso_autocomplete') == $this->id) 
+        {
+			include_once(TL_ROOT . '/system/modules/isotope_direct/config/stopwords.php');
+	        $arrWhere = array("c.page_id IN (" . implode(',', array_map('intval', $this->findCategories())) . ")");
+	        $arrValues = array();
+	        
+        	$keywords = explode(' ', \Input::get('query'));
+        	for ($i = 0; $i < count($keywords); $i++) 
+        	{
+				$strTerm = trim($keywords[$i]);
+				if (empty($strTerm) || 
+					in_array(strtolower($strTerm), array_map('strtolower', $GLOBALS['KEYWORD_STOP_WORDS'])) || 
+					in_array(strtolower($strTerm), array_map('strtolower', $GLOBALS['KEYWORD_STOP_WORDS'])))
+				{
+    				continue;
+				}
+	        	$arrWhere[] = Product_Model::getTable().".".$this->iso_searchAutocomplete." REGEXP ?";
+	        	$arrValues[] = $strTerm;
+        	}
+
+	        if ($this->iso_list_where != '') {
+	            $arrWhere[] = Haste::getInstance()->call('replaceInsertTags', $this->iso_list_where);
+	        }
+        	
+            $objProducts = Product_Model::findPublishedBy($arrWhere, $arrValues, array('order' => "c.sorting"));
+
+            if (null === $objProducts) {
+                $objResponse = new JsonResponse(array('suggestions'=>array()));
+                $objResponse->send();
+            }
+
+            $objResponse = new JsonResponse(array('suggestions'=>array_values(array_map('html_entity_decode', $objProducts->fetchEach($this->iso_searchAutocomplete)))));
+            $objResponse->send();
+        }
     }
 
 
     /**
-     * Generate ajax
-     * @return mixed
+     * The ids of all pages we take care of. This is what should later be used eg. for filter data.
+     *
+     * @return array
      */
-    public function generateAjax()
+    protected function findCategories()
     {
-        /*$strKeywords = \Input::get('keywords');
-        
-        if ( (($this->property_searchAutocomplete && \Input::get('autocomplete')) || ($this->property_locationsAutocomplete && \Input::get('locationsautocomplete'))) && (!empty($strKeywords) || !empty($strLocations)) )
-        {
-	    	\System::loadLanguageFile('tl_property');
-    		
-            $time = time();
-			$arrRegexs = array();
-			$arrValues = array();
-            $t = Product_Model::getTable();
-	    	$arrFields = (array)deserialize(\Input::get('autocomplete') ? $this->property_searchAutocomplete : $this->property_locationsAutocomplete);
-            $arrCategories = $this->findCategories($this->property_category_scope);
-            
-			$arrColumns = array("$t.id IN( SELECT pid FROM tl_property_categories WHERE page_id IN (" . implode(',', $this->arrCategories) . "))");
-			
-			foreach ($arrFields as $field)
-			{
-				if ($GLOBALS['TL_DCA']['tl_property']['fields'][$field]['sql'] != 'text NULL' && $GLOBALS['TL_DCA']['tl_property']['fields'][$field]['sql'] != 'blob NULL')
-				{
-					$arrRegexs[] = "$t." . $field . " REGEXP ?";
-					$arrValues[] = \Input::get('autocomplete') ? $strKeywords : $strLocations;
-				}
-			}
-			
-			$arrColumns[] = '('. implode(" OR ", $arrRegexs) . ')';
-        
-	        //Add where statement from module config
-	        if ($this->property_list_where != '') {
-	            $arrColumns[] = $this->property_list_where;
-	        }
-			
-            $objProperties = Product_Model::findPublishedBy($arrColumns, $arrValues, array('limit'=>300, 'order'=>'tstamp DESC'));
-            
-            if ($objProperties !== null && $objProperties->count())
-            {
-            	$arrReturn = array();
-            	
-            	while ($objProperties->next())
-            	{
-					foreach ($arrFields as $field)
-					{
-						if ($GLOBALS['TL_DCA']['tl_property']['fields'][$field]['sql'] != 'text NULL' && $GLOBALS['TL_DCA']['tl_property']['fields'][$field]['sql'] != 'blob NULL')
-						{
-							$arrReturn[] = $objProperties->current()->{$field};
-						}
-					}
-            	}
-				
-	            return array_values(array_unique($arrReturn));
-            }
-        }*/
+        if (null === $this->arrCategories) {
 
-        return '';
+            if ($this->defineRoot && $this->rootPage > 0) {
+                $objPage = \PageModel::findWithDetails($this->rootPage);
+            } else {
+                global $objPage;
+            }
+
+            $t = \PageModel::getTable();
+            $arrCategories = null;
+            $arrUnpublished = array();
+            $strWhere = "$t.type!='error_403' AND $t.type!='error_404'";
+
+            if (!BE_USER_LOGGED_IN) {
+                $time = time();
+                $objUnpublished = \PageModel::findBy(array("($t.start!='' AND $t.start>$time) OR ($t.stop!='' AND $t.stop<$time) OR $t.published=?"), array(''));
+                $arrUnpublished = $objUnpublished->fetchEach('id');
+                //$strWhere .= " AND ($t.start='' OR $t.start<$time) AND ($t.stop='' OR $t.stop>$time) AND $t.published='1'";
+            }
+
+            switch ($this->iso_category_scope) {
+
+                case 'global':
+                    $arrCategories = array($objPage->rootId);
+                    $arrCategories = \Database::getInstance()->getChildRecords($objPage->rootId, 'tl_page', false, $arrCategories, $strWhere);
+                    $arrCategories = array_diff($arrCategories, $arrUnpublished);
+                    break;
+
+                case 'current_and_first_child':
+                    $arrCategories   = \Database::getInstance()->execute("SELECT id FROM tl_page WHERE pid={$objPage->id} AND $strWhere")->fetchEach('id');
+                    $arrCategories[] = $objPage->id;
+                    break;
+
+                case 'current_and_all_children':
+                    $arrCategories = array($objPage->id);
+                    $arrCategories = \Database::getInstance()->getChildRecords($objPage->id, 'tl_page', false, $arrCategories, $strWhere);
+                    $arrCategories = array_diff($arrCategories, $arrUnpublished);
+                    break;
+
+                case 'parent':
+                    $arrCategories = array($objPage->pid);
+                    break;
+
+                case 'product':
+                    /** @var \Isotope\Model\Product\Standard $objProduct */
+                    $objProduct = Product_Model::findAvailableByIdOrAlias(\Haste\Input\Input::getAutoItem('product'));
+
+                    if ($objProduct !== null) {
+                        $arrCategories = $objProduct->getCategories(true);
+                    } else {
+                        $arrCategories = array(0);
+                    }
+                    break;
+
+                case 'article':
+                    $arrCategories = array($GLOBALS['ISO_CONFIG']['current_article']['pid'] ? : $objPage->id);
+                    break;
+
+                case '':
+                case 'current_category':
+                    $arrCategories = array($objPage->id);
+                    break;
+
+                default:
+                    if (isset($GLOBALS['ISO_HOOKS']['findCategories']) && is_array($GLOBALS['ISO_HOOKS']['findCategories'])) {
+                        foreach ($GLOBALS['ISO_HOOKS']['findCategories'] as $callback) {
+                            $objCallback   = \System::importStatic($callback[0]);
+                            $arrCategories = $objCallback->$callback[1]($this);
+
+                            if ($arrCategories !== false) {
+                                break;
+                            }
+                        }
+                    }
+                    break;
+            }
+
+            $this->arrCategories = empty($arrCategories) ? array(0) : $arrCategories;
+        }
+
+        return $this->arrCategories;
     }
 }

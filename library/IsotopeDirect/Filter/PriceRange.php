@@ -1,43 +1,41 @@
 <?php
 
 /**
- * Copyright (C) 2014 HB Agency
- * 
- * @author		Blair Winans <bwinans@hbagency.com>
- * @author		Adam Fisher <afisher@hbagency.com>
- * @link		http://www.hbagency.com
+ * Copyright (C) 2015 Rhyme Digital, LLC
+ *
+ * @author		Blair Winans <blair@rhyme.digital>
+ * @author		Adam Fisher <adam@rhyme.digital>
+ * @link		http://rhyme.digital
  * @license		http://www.gnu.org/licenses/lgpl-3.0.html LGPL
  */
 
 namespace IsotopeDirect\Filter;
 
+use IsotopeDirect\Interfaces\IsotopeDirectFilter;
 
 /**
  * Class PriceRange
  * Price range filter
  */
-class PriceRange extends Filter
+class PriceRange extends Filter implements IsotopeDirectFilter
 {
-	
 	/**
 	 * Filter key
 	 * @var string
 	 */
 	protected static $strKey = 'pricerange';
-	
 
 	/**
      * Add this filter to the module's template or get the URL params
      * @param   array
-     * @param   object
-     * @param   array
-     * @param   object
+     * @param   Contao\Template
+     * @param   Contao\Module
      * @param   boolean
-     * @return  mixed (redirect params or false)
+     * @return  mixed string|bool|void
      */
 	public static function generateFilter(&$arrCategories, &$objTemplate, $objModule, $blnGenURL=false)
 	{
-        $arrRanges = static::getPriceRanges($arrCategories, $objTemplate, $objModule, $blnGenURL);
+        $arrRanges = static::getPriceRanges();
 
         // !HOOK: custom price ranges
         if (isset($GLOBALS['ISO_HOOKS']['getFilterPriceRanges']) && is_array($GLOBALS['ISO_HOOKS']['getFilterPriceRanges']))
@@ -61,7 +59,7 @@ class PriceRange extends Filter
 		    	foreach($arrPosted as $post)
 		    	{
 		    		//Check that they exist
-			    	if (strlen(trim($post)) && (in_array($post, array_keys($arrAvailable)) || in_array(htmlentities($post), array_keys($arrAvailable))))
+			    	if (strlen(trim($post)) && (in_array($post, array_keys($arrRanges)) || in_array(htmlentities($post), array_keys($arrRanges))))
 			    	{
 				    	$arrURLFilters[] = $post;
 			    	}
@@ -88,8 +86,11 @@ class PriceRange extends Filter
     	
 	}
 	
-	
-	protected static function getPriceRanges(&$arrCategories, &$objTemplate, $objModule, $blnGenURL=false)
+	/*
+	 * Return default price ranges
+	 * @return array
+	 */
+	protected static function getPriceRanges()
 	{
 		return array(
     	    '0to100'			=>'Under $100', 

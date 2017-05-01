@@ -1,30 +1,30 @@
 <?php
 
 /**
- * Copyright (C) 2014 HB Agency
- * 
- * @author		Blair Winans <bwinans@hbagency.com>
- * @author		Adam Fisher <afisher@hbagency.com>
- * @link		http://www.hbagency.com
+ * Copyright (C) 2015 Rhyme Digital, LLC
+ *
+ * @author		Blair Winans <blair@rhyme.digital>
+ * @author		Adam Fisher <adam@rhyme.digital>
+ * @link		http://rhyme.digital
  * @license		http://www.gnu.org/licenses/lgpl-3.0.html LGPL
  */
+
  
 namespace IsotopeDirect\Module;
+
+use Contao\Model\QueryBuilder;
 
 use IsotopeDirect\Filter\Filter;
 
 use Haste\Haste;
+use Haste\Input\Input;
 use Haste\Generator\RowClass;
 use Haste\Http\Response\HtmlResponse;
 
 use Isotope\Isotope;
 use Isotope\Frontend as Isotope_Frontend;
 use Isotope\Model\Product as Product_Model;
-use Isotope\Model\ProductType as ProductType_Model;
-use Isotope\Model\Product\Standard as Standard_Product;
-use Isotope\Module\Module as Isotope_Module;
 use Isotope\Module\ProductList as Isotope_ProductList;
-use Isotope\RequestCache\Sort as RequestCache_Sort;
 
 
 
@@ -34,7 +34,6 @@ use Isotope\RequestCache\Sort as RequestCache_Sort;
  */
 class ProductList extends Isotope_ProductList
 {
-
     /**
      * Template
      * @var string
@@ -46,7 +45,6 @@ class ProductList extends Isotope_ProductList
      * @var boolean
      */
     protected $blnCacheProperties = false;
-
 
     /**
      * Display a wildcard in the back end
@@ -67,28 +65,15 @@ class ProductList extends Isotope_ProductList
         }
         
         // Hide item list in reader mode if the respective setting is enabled
-        if ($this->iso_hide_list && \Haste\Input\Input::getAutoItem('product') != '')
+        if ($this->iso_hide_list && Input::getAutoItem('product', false, true) != '')
         {
             return '';
         }
-
-        /*$this->iso_filterModules = deserialize($this->iso_filterModules, true);
-
-        // Apply limit from filter module
-        if (is_array($this->iso_filterModules))
+        
+        if (is_numeric(\Input::get('perpage')) && intval(\Input::get('perpage')))
         {
-            // We only do this once. getFiltersAndSorting() then automatically has the correct sorting
-            $this->iso_filterModules = array_reverse($this->iso_filterModules);
-
-            foreach ($this->iso_filterModules as $module)
-            {
-                if ($GLOBALS['ISO_LIMIT'][$module] > 0)
-                {
-                    $this->perPage = $GLOBALS['ISO_LIMIT'][$module];
-                    break;
-                }
-            }
-        }*/
+	        $this->perPage = intval(\Input::get('perpage'));
+        }
 
         return parent::generate();
     }
@@ -122,32 +107,17 @@ class ProductList extends Isotope_ProductList
      */
     protected function compile()
     {
-        global $objPage;
         
         //Get products
         $arrProducts = $this->findProducts();
-        
-        // No items found
-        if (!is_array($arrProducts) || empty($arrProducts))
-        {
-            // Do not index or cache the page
-            $objPage->noSearch = 1;
-            $objPage->cache = 0;
 
-            $this->Template->empty = true;
-            $this->Template->type = 'empty';
-            $this->Template->message = $this->iso_emptyMessage ? $this->iso_noProducts : $GLOBALS['TL_LANG']['MSC']['noProducts'];
-            $this->Template->items = array();
+        // No products found
+        if (!is_array($arrProducts) || empty($arrProducts)) {
+            $this->compileEmptyMessage();
 
             return;
         }
-		
-		//Handle jump to first
-        if ($this->iso_jump_first && \Input::get('product') == '')
-        {
-            $objProduct = $objProducts->first();
-            $this->redirect($objProduct->href_reader);
-        }
+
         $arrBuffer = array();
 
         $arrDefaultOptions = $this->getDefaultProductOptions();
@@ -215,9 +185,8 @@ class ProductList extends Isotope_ProductList
         if (!is_array($arrValues)) {
             $arrValues = array();
         }
-        
+
         //Add categories to query
-        //$arrColumns[] = "c.page_id IN (" . implode(',', $arrCategories) . ")";
 	    $arrColumns[] = Product_Model::getTable() . ".id IN( SELECT pid FROM tl_iso_product_category WHERE page_id IN (" . implode(',', $arrCategories) . "))"; 
 		
 		//Get only cache IDs
@@ -242,29 +211,27 @@ class ProductList extends Isotope_ProductList
         }
 		
 		//Calculate the total on the query
-        $intTotal = static::countPublishedBy($arrColumns, $arrValues, $arrOptions);
+        $intTotal = static::countPublishedBy($arrColumns, $arrValues);
 	
 		//Generate pagination and get offset
 		$offset = $this->generatePagination($intTotal);
-		
+
 		//Build options
 		$arrOptions = array
 		(
 			'offset'	=> $offset,
-			'limit'		=> $this->perPage,
+			'limit'		=> ($this->numberOfItems && $this->perPage) ? min($this->numberOfItems, $this->perPage) : ($this->perPage ?: $this->numberOfItems),
 			'order'		=> $strSorting,
 		);
+		
+		// Temporary fix for category sorting values
+	    $arrColumns[] = "c.page_id IN (" . implode(',', $arrCategories) . ")";
 		
 		//Run query
         $objProducts = Product_Model::findPublishedBy(
             $arrColumns,
             $arrValues,
             $arrOptions
-            /*array(
-                 'order'   => $strSorting ?: 'c.sorting',
-                 'filters' => array(),
-                 'sorting' => array(),
-            )*/
         );
 
         return (null === $objProducts) ? array() : $objProducts->getModels();
@@ -310,11 +277,9 @@ class ProductList extends Isotope_ProductList
     {
     	$strWhere 	= '';
     	$strSorting = '';
-    	$arrFilters	= array();
     	$arrWhere	= array();
     	$arrValues 	= array();
-    	$arrSorting	= array();
-    	
+    	$blnDefaultSort = false;
     	
     	// Sorting
     	if (\Input::get('sorting'))
@@ -325,19 +290,23 @@ class ProductList extends Isotope_ProductList
 	    	if (\Database::getInstance()->fieldExists($arrSortField[0], Product_Model::getTable()) && (strtolower($arrSortField[1])=='asc' || strtolower($arrSortField[1])=='desc'))
 	    	{
 		    	$strSorting = $arrSortField[0] . ' ' . strtoupper($arrSortField[1]);
-	            //$arrSorting[$arrSortField[0]] = (strtoupper($arrSortField[1]) == 'DESC' ? RequestCache_Sort::descending() : RequestCache_Sort::ascending());
+	    	}
+	    	
+	    	// Price sorting isn't on tl_iso_product
+	    	if (strpos(\Input::get('sorting'), 'price') === 0 && (strtolower($arrSortField[1])=='asc' || strtolower($arrSortField[1])=='desc'))
+	    	{
+		    	$strSorting = "(SELECT IFNULL(ppt.price, 0) FROM tl_iso_product_pricetier ppt INNER JOIN tl_iso_product_price pp ON ppt.pid=pp.id WHERE pp.pid=tl_iso_product.id) " . strtoupper($arrSortField[1]);
 	    	}
     	}
     	
     	// Default sorting
-    	if (!($strSorting) && $this->iso_listingSortField && $this->iso_listingSortDirection)
+    	if (!$strSorting && $this->iso_listingSortField && $this->iso_listingSortDirection)
     	{
+    		$blnDefaultSort = true;
 	    	$strSorting = $this->iso_listingSortField . ' ' . $this->iso_listingSortDirection;
-            //$arrSorting[$this->iso_listingSortField] = ($this->iso_listingSortDirection == 'DESC' ? RequestCache_Sort::descending() : RequestCache_Sort::ascending());
 	    	
     	}
-    	
-    	
+
     	// Price range
     	if (\Input::get('pricerange'))
     	{
@@ -381,6 +350,8 @@ class ProductList extends Isotope_ProductList
     		}
     	}
     	
+		$arrSortFields = array();
+		$arrSortValues = array();
     	
     	// Keywords
     	if (\Input::get('keywords'))
@@ -414,12 +385,31 @@ class ProductList extends Isotope_ProductList
 					    	$arrValues[] = $strTerm;
 			    		}
 	    			}
-    				
+	    			
+			    	// Do relevancy sorting
+	    			$intPriority = 1;
+		    		foreach ($arrFields as $field)
+		    		{
+		    			foreach ($arrFinalKeywords as $finalKeyword)
+		    			{
+		    				$strTerm = trim($finalKeyword);
+		    				
+		    				if (empty($strTerm) || in_array(strtolower($strTerm), array_map('strtolower', $GLOBALS['KEYWORD_STOP_WORDS'])) || in_array(strtolower($strTerm), array_map('strtolower', $GLOBALS['KEYWORD_STOP_WORDS'])))
+		    				{
+			    				continue;
+		    				}
+		    				
+				    		$arrSortFields[] = "CASE WHEN " . Product_Model::getTable() . ".$field REGEXP ? THEN $intPriority ELSE 9999999999 END";
+					    	$arrSortValues[] = $strTerm;
+						    $intPriority++;
+					    }
+		    		}
     			}
 	    		
 	    		if (count($where))
 	    		{
 			    	$arrWhere['keywords'] = '('.implode(' OR ', $where).')';
+			    	
 			    }
     		}
     	}
@@ -433,13 +423,27 @@ class ProductList extends Isotope_ProductList
                 list($arrValues, $arrWhere, $strSorting) = $objCallback->$callback[1]($arrValues, $arrWhere, $strSorting, $this->findCategories(), $this);
             }
         }
+        
+    	// Do relevancy sorting - todo: need a better way to do this so it can be passed to the hook
+    	if ($blnDefaultSort && !empty($arrSortFields) && !empty($arrSortValues))
+    	{
+	    	$strSorting = implode(',', $arrSortFields);
+	    	
+	    	foreach ($arrSortValues as $val)
+	    	{
+		    	$arrValues[] = $val;
+	    	}
+    	}
+    	
+    	// Sort by category if nothing else
+    	$strSorting = $strSorting ?: "c.sorting ".$this->iso_listingSortDirection;
     	    	
     	// Now put together the entire WHERE
     	if(count($arrWhere) > 0)
     	{
 	    	$strWhere = implode(' AND ', $arrWhere);
     	}
-    	
+
     	return array($arrValues, $strWhere, $strSorting);
     }
     
@@ -449,12 +453,11 @@ class ProductList extends Isotope_ProductList
      * @param   mixed
      * @param   mixed
      * @param   array
-     * @return  \Collection
+     * @return  \Contao\Collection
      */
     public static function countPublishedBy($arrColumns, $arrValues, $arrOptions=array())
     {
         $p = Product_Model::getTable();
-        $t = ProductType_Model::getTable();
 
         $arrValues = (array) $arrValues;
 
@@ -467,18 +470,157 @@ class ProductList extends Isotope_ProductList
             $arrColumns[] = "$p.published='1' AND ($p.start='' OR $p.start<$time) AND ($p.stop='' OR $p.stop>$time)";
         }
         
-        //Running a straight up SQL query here to optimize
-        $strQuery = "SELECT COUNT($p.id) AS count FROM $p";
-        $strQuery .= " INNER JOIN $t t ON $p.type=t.id";
-        $strQuery .= " WHERE " . implode(" AND ", $arrColumns);
+        $arrFind = array_merge(array
+        (
+        	'table'			=> $p,
+        	'column'		=> $arrColumns,
+        	'value'			=> $arrValues,
+        ), (array)$arrOptions);
         
-        //Group
-        if($arrOptions['group'] !== null)
+        $strQuery = QueryBuilder::find($arrFind);
+        $strQuery = static::replaceSectionsOfString($strQuery, "SELECT ", "FROM ", "SELECT $p.id FROM ", true, false);
+        
+        $arrIDs = \Database::getInstance()->prepare($strQuery)->execute($arrValues)->fetchEach('id');
+        
+        // !HOOK: custom actions
+        if (isset($GLOBALS['ISO_HOOKS']['passFoundProducts']) && is_array($GLOBALS['ISO_HOOKS']['passFoundProducts']))
         {
-	        $strQuery .= " GROUP BY " . $arrOptions['group'];
+            foreach ($GLOBALS['ISO_HOOKS']['passFoundProducts'] as $callback)
+            {
+                $objCallback = \System::importStatic($callback[0]);
+                $objCallback->$callback[1]($arrIDs);
+            }
         }
-        
-        return (int) \Database::getInstance()->prepare($strQuery)->execute($arrValues)->count;
+          
+        return (int) count($arrIDs);
     }
+
+
+    /**
+     * The ids of all pages we take care of. This is what should later be used eg. for filter data.
+     *
+     * @return array
+     */
+    protected function findCategories()
+    {
+        if (null === $this->arrCategories) {
+
+            if ($this->defineRoot && $this->rootPage > 0) {
+                $objPage = \PageModel::findWithDetails($this->rootPage);
+            } else {
+                global $objPage;
+            }
+
+            $t = \PageModel::getTable();
+            $arrCategories = null;
+            $arrUnpublished = array();
+            $strWhere = "$t.type!='error_403' AND $t.type!='error_404'";
+
+            if (!BE_USER_LOGGED_IN) {
+                $time = time();
+                $objUnpublished = \PageModel::findBy(array("($t.start!='' AND $t.start>$time) OR ($t.stop!='' AND $t.stop<$time) OR $t.published=?"), array(''));
+                $arrUnpublished = $objUnpublished->fetchEach('id');
+                //$strWhere .= " AND ($t.start='' OR $t.start<$time) AND ($t.stop='' OR $t.stop>$time) AND $t.published='1'";
+            }
+
+            switch ($this->iso_category_scope) {
+
+                case 'global':
+                    $arrCategories = array($objPage->rootId);
+                    $arrCategories = \Database::getInstance()->getChildRecords($objPage->rootId, 'tl_page', false, $arrCategories, $strWhere);
+                    $arrCategories = array_diff($arrCategories, $arrUnpublished);
+                    break;
+
+                case 'current_and_first_child':
+                    $arrCategories   = \Database::getInstance()->execute("SELECT id FROM tl_page WHERE pid={$objPage->id} AND $strWhere")->fetchEach('id');
+                    $arrCategories[] = $objPage->id;
+                    break;
+
+                case 'current_and_all_children':
+                    $arrCategories = array($objPage->id);
+                    $arrCategories = \Database::getInstance()->getChildRecords($objPage->id, 'tl_page', false, $arrCategories, $strWhere);
+                    $arrCategories = array_diff($arrCategories, $arrUnpublished);
+                    break;
+
+                case 'parent':
+                    $arrCategories = array($objPage->pid);
+                    break;
+
+                case 'product':
+                    /** @var \Isotope\Model\Product\Standard $objProduct */
+                    $objProduct = Product_Model::findAvailableByIdOrAlias(\Haste\Input\Input::getAutoItem('product'));
+
+                    if ($objProduct !== null) {
+                        $arrCategories = $objProduct->getCategories(true);
+                    } else {
+                        $arrCategories = array(0);
+                    }
+                    break;
+
+                case 'article':
+                    $arrCategories = array($GLOBALS['ISO_CONFIG']['current_article']['pid'] ? : $objPage->id);
+                    break;
+
+                case '':
+                case 'current_category':
+                    $arrCategories = array($objPage->id);
+                    break;
+
+                default:
+                    if (isset($GLOBALS['ISO_HOOKS']['findCategories']) && is_array($GLOBALS['ISO_HOOKS']['findCategories'])) {
+                        foreach ($GLOBALS['ISO_HOOKS']['findCategories'] as $callback) {
+                            $objCallback   = \System::importStatic($callback[0]);
+                            $arrCategories = $objCallback->$callback[1]($this);
+
+                            if ($arrCategories !== false) {
+                                break;
+                            }
+                        }
+                    }
+                    break;
+            }
+
+            $this->arrCategories = empty($arrCategories) ? array(0) : $arrCategories;
+        }
+
+        return $this->arrCategories;
+    }
+
+	
+	/**
+	 * Remove sections of a string using a start and end (use "[caption" and "]" to remove any caption blocks)
+	 * @param  string
+	 * @param  string
+	 * @param  string
+	 * @return string
+	 */
+	public static function replaceSectionsOfString($strSubject, $strStart, $strEnd, $strReplace='', $blnCaseSensitive=true, $blnRecursive=true)
+	{
+		// First index of start string
+		$varStart = $blnCaseSensitive ? strpos($strSubject, $strStart) : stripos($strSubject, $strStart);
+		
+		if ($varStart === false)
+			return $strSubject;
+		
+		// First index of end string
+		$varEnd = $blnCaseSensitive ? strpos($strSubject, $strEnd, $varStart+1) : stripos($strSubject, $strEnd, $varStart+1);
+		
+		// The string including the start string, end string, and everything in between
+		$strFound = $varEnd === false ? substr($strSubject, $varStart) : substr($strSubject, $varStart, ($varEnd + strlen($strEnd) - $varStart));
+		
+		// The string after the replacement has been made
+		$strResult = $blnCaseSensitive ? str_replace($strFound, $strReplace, $strSubject) : str_ireplace($strFound, $strReplace, $strSubject);
+		
+		// Check for another occurence of the start string
+		$varStart = $blnCaseSensitive ? strpos($strSubject, $strStart) : stripos($strSubject, $strStart);
+		
+		// If this is recursive and there's another occurence of the start string, keep going
+		if ($blnRecursive && $varStart !== false)
+		{
+			$strResult = static::replaceSectionsofString($strResult, $strStart, $strEnd, $strReplace, $blnCaseSensitive, $blnRecursive);
+		}
+		
+		return $strResult;
+	}
 
 }

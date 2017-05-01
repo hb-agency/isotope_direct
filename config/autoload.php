@@ -1,14 +1,14 @@
 <?php
 
 /**
- * Contao Open Source CMS
+ * Copyright (C) 2015 Rhyme Digital, LLC
  *
- * Copyright (c) 2005-2014 Leo Feyer
- *
- * @package Isotope_direct
- * @link    https://contao.org
- * @license http://www.gnu.org/licenses/lgpl-3.0.html LGPL
+ * @author		Blair Winans <blair@rhyme.digital>
+ * @author		Adam Fisher <adam@rhyme.digital>
+ * @link		http://rhyme.digital
+ * @license		http://www.gnu.org/licenses/lgpl-3.0.html LGPL
  */
+
 
 
 /**
